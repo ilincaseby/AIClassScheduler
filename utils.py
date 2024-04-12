@@ -8,6 +8,7 @@ ZILE = 'Zile'
 MATERII = 'Materii'
 PROFESORI = 'Profesori'
 SALI = 'Sali'
+CONSTRANGERI = 'Constrangeri'
 
 
 ##################### FUNCTII #####################
