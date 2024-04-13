@@ -1,5 +1,6 @@
 import utils
 import re
+import random
 
 def get_break(constraints):
     key_word = 'Pauza'
@@ -9,6 +10,10 @@ def get_break(constraints):
     return ''
 
 def cost_solution_soft_constraints(solution, data):
+    '''
+    Based on solution presented, return an estimated 'cost'
+    for having it as a final solution(i.e. soft constraints not respected)
+    '''
     days = data[utils.ZILE]
     intervals = data[utils.INTERVALE]
     teachers = data[utils.PROFESORI]
@@ -18,6 +23,8 @@ def cost_solution_soft_constraints(solution, data):
         for interval in intervals:
             dict_classes = solution[day][interval]
             for _, class_prof in dict_classes.items():
+                if class_prof == (0, 0):
+                    continue
                 teacher_name = class_prof[1]
                 if class_prof[1] not in teachers_working_plan:
                     teachers_working_plan[teacher_name] = []
@@ -58,5 +65,70 @@ def cost_solution_soft_constraints(solution, data):
                 cost_ret += 1
     return cost_ret
 
-def number_conflicts(solution, data):
-    pass
+def get_subject_classrooms(data, subject):
+    '''
+    Return a list of tuples (x, y);
+    where x is the name of a classroom where subject can be acquired
+    and y are its properties(capacity and subjects possible to be discussed)
+    '''
+    classrooms = []
+    for class_name, properties in data[utils.SALI].items():
+        if subject in properties[utils.MATERII]:
+            classrooms.append((class_name, properties))
+    return classrooms
+
+def get_subject_teachers_available(data, subject, solution, day_interval_class):
+    res = []
+    for teacher_name, properties in data[utils.PROFESORI].items():
+        if subject not in properties['Materii']:
+            continue
+        ok = 1
+        for _, class_ in solution[day_interval_class[0]][day_interval_class[1]].items():
+            name = class_[1]
+            if name == teacher_name:
+                ok = 0
+                break
+        if ok == 1:
+            res.append(teacher_name)
+    return res
+
+def get_random_state(data):
+    '''
+    Get a random state as initial state.
+    Example {Luni: {8-10: {EG202: (IOCLA, RD)}}}
+    '''
+    state = {}
+    state_subjects = [(key, value) for key, value in data[utils.MATERII].items()]
+    day_interval_class = []
+    for day in data[utils.ZILE]:
+        state[day] = {}
+        for interval in data[utils.INTERVALE]:
+            state[day][interval] = {}
+            for classroom, _ in data[utils.SALI].items():
+                state[day][interval][classroom] = (0, 0)
+                day_interval_class.append((day, interval, classroom))
+    random.shuffle(day_interval_class)
+    while len(state_subjects) > 0:
+        total = sum(x[1] for x in state_subjects)
+        probs = [x[1] / total for x in state_subjects]
+        state_subject = random.choices(state_subjects, probs)[0]
+        added_class = 0
+        for item in day_interval_class:
+            if state_subject[0] in data[utils.SALI][item[2]]['Materii']:
+                available_teachers = get_subject_teachers_available(data,
+                                                                state_subject[0], state, item)
+                remained = state_subject[1] - data[utils.SALI][item[2]]['Capacitate']
+                teacher_chosen = random.choice(available_teachers)
+                state[item[0]][item[1]][item[2]] = (state_subject[0], teacher_chosen)
+                new_tup = (state_subject[0], remained)
+                state_subjects.remove(state_subject)
+                if new_tup[1] > 0:
+                    state_subjects.append(new_tup)
+                added_class = 1
+                day_interval_class.remove(item)
+                break
+        if added_class == 0:
+            return {} # no solution(hard constraints not respected)
+    if len(state_subjects) > 0:
+        return {} # no solution(hard constraints not respected)
+    return state
