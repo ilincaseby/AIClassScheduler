@@ -1,4 +1,5 @@
 from hill_climbing import random_restart_hill_climbing
+from astar import a_star_beam_search
 import sys
 import utils
 import re
@@ -33,9 +34,11 @@ def start():
         teacher[utils.CONSTRANGERI] += new_constraints
     #print(parsed_data)
     if algorithm_desired == 'hc':
-        random_restart_hill_climbing(parsed_data)
+        state, cost, is_final = random_restart_hill_climbing(parsed_data, 1500)
+        print(is_final)
+        print(state)
     else:
-        pass
+        state, cost, is_final = a_star_beam_search(parsed_data)
     pass
 
 if __name__ == '__main__':
